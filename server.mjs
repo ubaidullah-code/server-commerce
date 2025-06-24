@@ -13,7 +13,11 @@ app.use(cors())
 const SECRET = process.env.SECRET_TOKEN
 
 // user get API
-app.get('/', async(req, res)=>{
+
+app.get('/', (req,res)=>{
+  res.send("hello world")
+})
+app.get('/get-user', async(req, res)=>{
   try {
         let result = await db.query('SELECT * FROM users')
         res.status(200).send({message: "user Founded" , data: result.rows })
