@@ -1,0 +1,107 @@
+import express from "express";
+import 'dotenv/config'
+import databaseCheck from "./db.mjs";
+import bcrypt from "bcryptjs";
+
+import cors from 'cors';
+const port = 5004;
+const app = express()
+app.use(express.json());
+app.use(cors())
+
+app.get('/', async(req , res)=>{
+    try {
+        let result = await databaseCheck.query('SELECT * FROM users')
+        res.status(200).send({message: "Success" , data: result.rows, })
+    } catch (error) {
+        res.status(500).send({message: "Internal Server Error"})
+    }
+})
+
+
+app.post('/sign-up', async (req, res) => {
+  let { firstName, lastName, email, password } = req.body;
+
+  if (!firstName || !lastName || !email || !password) {
+    res.status(400).send({ message: `Required parameter is missing` });
+    return;
+  }
+
+  let emailCheck1 = email.toLowerCase();
+  let EmailQuery = `SELECT * FROM users WHERE email = $1`;
+  let EmailValue = [emailCheck1];
+
+  try {
+    const emailCheck = await databaseCheck.query(EmailQuery, EmailValue);
+
+    if (emailCheck.rows.length) {
+      res.status(400).send({ message: 'This email already exists' });
+      return;
+    }
+
+ 
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(password, salt);
+
+
+    const SignQuery = `INSERT INTO users(first_name, last_name, email, password) VALUES ($1, $2, $3, $4)`;
+    const SignValues = [firstName, lastName, emailCheck1, hash];
+
+    console.log("hash", hash, "salt", salt);
+
+    await databaseCheck.query(SignQuery, SignValues);
+    res.status(201).send({ message: `User is created` });
+
+  } catch (error) {
+    console.log("ERROR", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
+
+
+app.post('/login', async(req , res)=>{
+    let { email  , password} = req.body;
+
+    if(!email || !password){
+        res.status(400).send({message : "Required perameter is Missing"});
+        return;
+    }
+    email = email.toLowerCase()
+    let queryLogin = `SELECT * FROM user WHERE email  = $1 `
+    let valueLogin = [email]
+    try {
+      let result =  await databaseCheck.query(queryLogin, valueLogin);
+        if(!result.rows.length){
+            res.status(401).send({message : "User Doesn't Existed with this Email "});
+            return;
+        }
+ 
+
+
+    } catch (error) {
+        console.log(error)
+    }
+})
+
+
+
+
+
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
+
+// create table 
+
+CREATE TABLE  users(
+user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+first_name VARCHAR(255),
+last_name VARCHAR(255),
+email VARCHAR(255),
+password TEXT,
+phone TEXT,
+user_role INT default 4,
+profile TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
